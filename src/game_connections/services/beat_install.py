@@ -95,20 +95,15 @@ def build_beat_uninstall_plan(target_backend: str = BACKEND_BEAT_THIS, *, ctx: d
             ),
         )
 
+    # Managed runtime uninstall removes the whole overlay only after this plan
+    # finishes successfully. Keep every action here marked as an environment
+    # mutation so the installer can skip per-package cleanup and avoid checking
+    # for package absence before the overlay itself is removed.
     actions = [
         pip_uninstall_action(
             ["beat-this", "rotary-embedding-torch", "einops", "tqdm"],
             description=_("Удаление beat-this...", "Uninstalling beat-this..."),
             progress=20,
-        ),
-        InstallAction(
-            type="call",
-            description=_("Проверка удаления beat-this...", "Validating beat-this removal..."),
-            progress=99,
-            fn=lambda **kwargs: not _backend_installed_in_environment(
-                BACKEND_BEAT_THIS,
-                **kwargs,
-            ),
         ),
     ]
     return InstallPlan(actions=actions, ok_status=_("Удалено", "Uninstalled"))
