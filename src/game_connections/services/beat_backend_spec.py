@@ -132,7 +132,10 @@ def build_beat_ctx(ctx: dict[str, Any] | None = None) -> dict[str, Any]:
     data = dict(ctx or {})
     if not data.get("gpu_vendor"):
         data["gpu_vendor"] = _detect_gpu_vendor()
-    data["libs_dir"] = os.environ.get("NEUROMITA_LIB_DIR")
+    # Managed runtime callers pass the overlay/core paths explicitly.  Do not
+    # overwrite those with the legacy global Lib directory during a later
+    # status refresh or after an application restart.
+    data.setdefault("libs_dir", os.environ.get("NEUROMITA_LIB_DIR"))
     return data
 
 
