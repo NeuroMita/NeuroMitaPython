@@ -33,8 +33,8 @@ class WorkingStateManager(CharacterScopedService):
         text = " ".join(str(value or "").split()).strip()
         return text[:limit].rstrip() if limit > 0 else ""
 
-    def update(self, value: Any, *, max_chars: int = 2000) -> bool:
-        """Replace the state with a bounded, normalized model-produced snapshot."""
+    def update(self, value: Any, *, max_chars: int = 2000, preserve_on_empty: bool = False) -> bool:
+        """Replace the bounded snapshot, optionally keeping it on an empty update."""
         if hasattr(value, "model_dump"):
             value = value.model_dump(exclude_none=True)
         if not isinstance(value, dict):
@@ -72,9 +72,30 @@ class WorkingStateManager(CharacterScopedService):
             key = self.storage_key
             if cleaned:
                 self._states[key] = cleaned
-            else:
+            elif not preserve_on_empty:
                 self._states.pop(key, None)
         return bool(cleaned)
+
+    def commit_from_response(self, response: Any, *, max_chars: int = 2000) -> str:
+        """Commit an explicitly provided handoff; omission preserves the last scene.
+
+        Pydantic's model_fields_set distinguishes an omitted optional field from
+        an explicitly emitted null. Do not treat the default None as a clear:
+        dialogue models regularly omit the handoff on otherwise valid replies.
+        """
+        if "working_state" not in getattr(response, "model_fields_set", set()):
+            return "retained"
+
+        state = response.working_state
+        if state is None:
+            self.clear()
+            return "cleared"
+
+        if self.update(state, max_chars=max_chars, preserve_on_empty=True):
+            return "updated"
+        # An empty object is not a meaningful scene update. Keep existing
+        # context unless the model explicitly requested a reset with null.
+        return "empty"
 
     def clear(self) -> None:
         with self._lock:
@@ -86,7 +107,7 @@ class WorkingStateManager(CharacterScopedService):
         if not state:
             return ""
 
-        lines = ["[WORKING STATE]", "Temporary interpretation from the previous turn."]
+        lines = ["[WORKING STATE]", "Temporary, unverified scene handoff from earlier turns; current Unity state overrides it."]
         for field, label in self._FIELDS:
             value = state.get(field)
             if isinstance(value, str) and value:

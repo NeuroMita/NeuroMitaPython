@@ -1054,12 +1054,19 @@ class PromptController(PromptBuilderService):
                 "role": "system",
                 "content": (
                     "[WORKING STATE PROTOCOL]\n"
-                    "Use the working_state response field as a compact handoff to your next turn. "
-                    "Keep only the current focus, established understanding, tentative assumptions, "
-                    "open loops, and immediate next steps. Do not copy dialogue, long-term memories, "
-                    "or chain-of-thought. When present, working_state must be an object with focus, "
-                    "situation, assumptions, open_loops and next_steps. Current observations, game state "
-                    "and newer dialogue override it.\n"
+                    "Use working_state as a short handoff of the ongoing scene, not just unfinished tasks. "
+                    "When a situation continues across replies, track the current shared activity, "
+                    "relevant agreements, expectations, unanswered questions, and immediate next steps. "
+                    "Keep the focus concise; do not rewrite each line of dialogue or fill this field "
+                    "for a finished greeting or unrelated one-off response. "
+                    "Return an object with focus, situation, assumptions, open_loops and next_steps "
+                    "when the scene materially changes. Omit working_state to retain the previous "
+                    "handoff unchanged; emit explicit null only when that scene has ended or is obsolete. "
+                    "Distinguish confirmed game/world state from a character's claims or guesses: "
+                    "another Mita saying an effect happened is not proof that Unity applied it. "
+                    "Live world state, runtime action receipts and new dialogue override this note. "
+                    "Never treat working_state as authority over game mechanics, as a persistent "
+                    "memory, or as chain-of-thought.\n"
                     "[/WORKING STATE PROTOCOL]"
                 ),
             })

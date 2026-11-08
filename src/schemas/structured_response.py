@@ -457,9 +457,12 @@ class StructuredResponse(BaseModel):
     working_state: Optional[WorkingState] = Field(
         default=None,
         description=(
-            "Compact temporary state for the next turn. Store only the current focus, "
-            "understanding, tentative assumptions, open loops and immediate next steps. "
-            "Do not copy dialogue, long-term memories, or chain-of-thought. Omit when there is no useful state."
+            "Compact, temporary handoff of the ongoing shared scene, current activity, "
+            "agreements, expectations, tentative assumptions and unfinished threads. "
+            "Do not copy dialogue, long-term memories or chain-of-thought. "
+            "Do not treat characters' claims about effects as confirmed Unity world state. "
+            "Omit this field to retain the previous scene; send explicit null to clear it "
+            "when the scene ends or is no longer relevant."
         ),
     )
 

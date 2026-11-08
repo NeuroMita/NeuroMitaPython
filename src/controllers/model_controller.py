@@ -2320,18 +2320,16 @@ class ModelController(GenerationService, ModelStateService):
                 dialogue=dialogue,
             )
 
-        # A tool-call response is only an intermediate turn. Commit its working
-        # state only when this is the final answer, so failed tools cannot leave
-        # a stale plan for the next player message.
+        # Only the final response in a tool chain may update the handoff.
+        # An omitted working_state field means "keep the current scene", whereas
+        # an explicit JSON null means "clear it". Pydantic defaults to None for
+        # both, so check model_fields_set through the scoped state manager.
         if capabilities.get("working_state", False):
             try:
-                if structured.working_state is None:
-                    char.working_state.clear()
-                else:
-                    char.working_state.update(
-                        structured.working_state,
-                        max_chars=int(self.settings.get("WORKING_STATE_MAX_CHARS", 2000) or 2000),
-                    )
+                char.working_state.commit_from_response(
+                    structured,
+                    max_chars=int(self.settings.get("WORKING_STATE_MAX_CHARS", 2000) or 2000),
+                )
             except Exception as exc:
                 logger.warning(
                     "[ModelController][%s] Failed to update working state: %s",
