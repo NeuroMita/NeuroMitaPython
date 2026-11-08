@@ -54,6 +54,23 @@ class LegacyRosterIdentityTests(unittest.TestCase):
         self.assertNotIn("(Mita)(you)", result)
         self.assertIn("said: 'I saw (you) there.'", result)
 
+    def test_escaped_json_unity_event_roster_is_neutral_and_valid_json(self):
+        # Older histories store a JSON description with literal \n separators.
+        import json
+
+        source = (
+            '[Current UnityEvent] {"description":"[DIALOGUE] You are in '
+            'dialogue with several (3) speakers: \\n Player\\n'
+            'Kind (Mita), its game object MitaPerson Mita)(you)\\n'
+            'Cappie (Mita), its game object MitaPerson Mita)\\n'
+            '[SPEAKER] Cappie (Mita) said: hello"}'
+        )
+        cleaned = neutralize_dialogue_roster_content(source)
+        payload = json.loads(cleaned.removeprefix("[Current UnityEvent] "))
+        self.assertIn("Kind (Mita)\nCappie (Mita)", payload["description"])
+        self.assertNotIn("(you)", payload["description"])
+        self.assertIn("[SPEAKER] Cappie (Mita) said: hello", payload["description"])
+
     def test_outside_roster_and_player_message_are_untouched(self):
         text = "The Player wrote: '(you) are listening.'\n[Something Else] Keep (you)."
         self.assertEqual(neutralize_dialogue_roster_content(text), text)
