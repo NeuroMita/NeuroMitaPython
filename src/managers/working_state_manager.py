@@ -34,7 +34,7 @@ class WorkingStateManager(CharacterScopedService):
         return text[:limit].rstrip() if limit > 0 else ""
 
     def update(self, value: Any, *, max_chars: int = 2000, preserve_on_empty: bool = False) -> bool:
-        """Replace the state with a bounded, normalized model-produced snapshot."""
+        """Replace the bounded snapshot, optionally keeping it on an empty update."""
         if hasattr(value, "model_dump"):
             value = value.model_dump(exclude_none=True)
         if not isinstance(value, dict):
@@ -107,7 +107,7 @@ class WorkingStateManager(CharacterScopedService):
         if not state:
             return ""
 
-        lines = ["[WORKING STATE]", "Temporary interpretation from the previous turn."]
+        lines = ["[WORKING STATE]", "Temporary, unverified scene handoff from earlier turns; current Unity state overrides it."]
         for field, label in self._FIELDS:
             value = state.get(field)
             if isinstance(value, str) and value:
