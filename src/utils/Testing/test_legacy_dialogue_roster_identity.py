@@ -40,6 +40,20 @@ class LegacyRosterIdentityTests(unittest.TestCase):
         self.assertNotIn("(Mita)(you)", result)
         self.assertIn("said: 'Hey, (you) heard me!'", result)
 
+    def test_inline_runtime_event_roster_is_neutral_but_speech_is_intact(self):
+        compact = (
+            "- [DIALOGUE] You are in dialogue with several (4) speakers: "
+            "Player Sleepy (Mita), its game object MitaPerson Mita) "
+            "Kind (Mita), its game object MitaPerson Mita)(you) "
+            "Cappie (Mita), its game object MitaPerson Mita) "
+            "[DIALOGUE_UPDATE] Cappie (Mita) said: 'I saw (you) there.'\n"
+        )
+        result = neutralize_dialogue_roster_content(compact)
+        self.assertIn("Player Sleepy (Mita) Kind (Mita) Cappie (Mita)", result)
+        self.assertNotIn("its game object", result)
+        self.assertNotIn("(Mita)(you)", result)
+        self.assertIn("said: 'I saw (you) there.'", result)
+
     def test_outside_roster_and_player_message_are_untouched(self):
         text = "The Player wrote: '(you) are listening.'\n[Something Else] Keep (you)."
         self.assertEqual(neutralize_dialogue_roster_content(text), text)
