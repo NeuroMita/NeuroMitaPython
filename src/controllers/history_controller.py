@@ -1806,6 +1806,11 @@ class HistoryController(HistoryService):
 
             content = m.get("content")
 
+            # Legacy [DIALOGUE] snapshots may say another Mita is '(you)'.
+            # Normalize the outgoing copy, never mutate the persisted history.
+            from services.dialogue_roster_context import neutralize_dialogue_roster_content
+            content = neutralize_dialogue_roster_content(content)
+
             # While a turn remains in the recent history, actions belong to
             # that exact assistant reply. Do not persist this derived text:
             # structured_data remains the source of truth in the database.
