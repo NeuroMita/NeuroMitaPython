@@ -203,6 +203,11 @@ class PromptSystemStateTests(unittest.TestCase):
         self.assertLess(protocol_index, state_index)
         self.assertLess(state_index, len(enabled_contents) - 1)
         self.assertEqual(enabled.messages[state_index]["role"], "assistant")
+        protocol = enabled_contents[protocol_index]
+        self.assertIn("ongoing scene", protocol)
+        self.assertIn("Omit working_state to retain", protocol)
+        self.assertIn("emit explicit null", protocol)
+        self.assertIn("not proof that Unity applied it", protocol)
 
         disabled = controller.build(PromptBuildRequest(
             character=_Character(),
