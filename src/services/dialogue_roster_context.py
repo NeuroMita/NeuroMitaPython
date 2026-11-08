@@ -18,6 +18,16 @@ _ROSTER_ENTRY = re.compile(
 )
 
 
+# Unity Runtime Events can compact a whole roster into a *single* bullet
+# containing the event payload after [DIALOGUE_UPDATE]. Only rewrite the
+# roster portion, never the quoted speaker text following that delimiter.
+_INLINE_ROSTER_ENTRY = re.compile(
+    r"(?P<label>\b[A-Za-z][A-Za-z0-9_-]*\s+\((?:Mita|cartridge|system)\))"
+    r"(?:,\s*its game object\s+[^)\r\n]*\))?(?:\(you\))?",
+    re.IGNORECASE,
+)
+
+
 def neutralize_legacy_dialogue_roster(text: str) -> str:
     """Strip relative identity and Unity object names from legacy roster lines.
 
@@ -32,6 +42,14 @@ def neutralize_legacy_dialogue_roster(text: str) -> str:
     for line in text.splitlines(keepends=True):
         if _ROSTER_START.search(line):
             inside_roster = True
+            # Some Unity events flatten "[DIALOGUE] ... Player Kind
+            # (Mita)(you) ..." into a single line, followed by speech.
+            if "speakers:" in line and "Player " in line:
+                roster, delimiter, speech = line.partition("[DIALOGUE_UPDATE]")
+                roster = _INLINE_ROSTER_ENTRY.sub(
+                    lambda match: match.group("label"), roster
+                )
+                line = roster + delimiter + speech
             result.append(line)
             continue
 
