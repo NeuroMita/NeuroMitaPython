@@ -40,6 +40,18 @@ def neutralize_legacy_dialogue_roster(text: str) -> str:
     inside_roster = False
     result: list[str] = []
     for line in text.splitlines(keepends=True):
+        # Some older [Current UnityEvent] entries embed JSON descriptions with
+        # literal "\\n" separators instead of actual newlines. Decode only for
+        # parsing the roster, then re-escape so the original JSON stays valid.
+        if _ROSTER_START.search(line) and "\\n" in line:
+            newline = "\\r\\n" if line.endswith("\\r\\n") else "\\n" if line.endswith("\\n") else ""
+            body = line[:-len(newline)] if newline else line
+            decoded = body.replace("\\n", "\n")
+            cleaned = neutralize_legacy_dialogue_roster(decoded)
+            result.append(cleaned.replace("\n", "\\n") + newline)
+            inside_roster = False
+            continue
+
         if _ROSTER_START.search(line):
             inside_roster = True
             # Some Unity events flatten "[DIALOGUE] ... Player Kind
