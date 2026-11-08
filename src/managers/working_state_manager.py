@@ -33,7 +33,7 @@ class WorkingStateManager(CharacterScopedService):
         text = " ".join(str(value or "").split()).strip()
         return text[:limit].rstrip() if limit > 0 else ""
 
-    def update(self, value: Any, *, max_chars: int = 2000) -> bool:
+    def update(self, value: Any, *, max_chars: int = 2000, preserve_on_empty: bool = False) -> bool:
         """Replace the state with a bounded, normalized model-produced snapshot."""
         if hasattr(value, "model_dump"):
             value = value.model_dump(exclude_none=True)
@@ -72,7 +72,7 @@ class WorkingStateManager(CharacterScopedService):
             key = self.storage_key
             if cleaned:
                 self._states[key] = cleaned
-            else:
+            elif not preserve_on_empty:
                 self._states.pop(key, None)
         return bool(cleaned)
 
@@ -91,7 +91,7 @@ class WorkingStateManager(CharacterScopedService):
             self.clear()
             return "cleared"
 
-        if self.update(state, max_chars=max_chars):
+        if self.update(state, max_chars=max_chars, preserve_on_empty=True):
             return "updated"
         # An empty object is not a meaningful scene update. Keep existing
         # context unless the model explicitly requested a reset with null.
