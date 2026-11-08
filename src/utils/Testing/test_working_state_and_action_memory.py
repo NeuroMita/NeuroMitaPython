@@ -48,6 +48,58 @@ class WorkingStateAndActionMemoryTests(unittest.TestCase):
         manager.clear()
         self.assertEqual(manager.format_for_prompt(), "")
 
+    def test_missing_working_state_preserves_previous_scene(self):
+        manager = WorkingStateManager().bind("Crazy", "Crazy")
+        manager.update(WorkingState(
+            focus="Keep playing the cat game",
+            situation=["Player and Mita are testing an ability"],
+        ))
+        response = StructuredResponse.model_validate({
+            "segments": [{"text": "The game continues."}],
+        })
+        self.assertIsNone(response.working_state)
+        self.assertNotIn("working_state", response.model_fields_set)
+        self.assertEqual(manager.commit_from_response(response), "retained")
+        self.assertIn("Keep playing the cat game", manager.format_for_prompt())
+
+    def test_explicit_null_clears_previous_scene(self):
+        manager = WorkingStateManager().bind("Kind", "Kind")
+        manager.update(WorkingState(focus="Wait for the next move"))
+        response = StructuredResponse.model_validate({
+            "segments": [{"text": "That scene is finished."}],
+            "working_state": None,
+        })
+        self.assertIn("working_state", response.model_fields_set)
+        self.assertEqual(manager.commit_from_response(response), "cleared")
+        self.assertEqual(manager.format_for_prompt(), "")
+
+    def test_new_scene_replaces_previous_and_respects_char_limit(self):
+        manager = WorkingStateManager().bind("ShortHair", "ShortHair")
+        manager.update(WorkingState(focus="Old activity"))
+        response = StructuredResponse.model_validate({
+            "segments": [{"text": "The next game starts."}],
+            "working_state": {
+                "focus": "New scene with another Mita",
+                "situation": ["We are continuing a shared activity with the player." * 20],
+                "assumptions": ["A claim about a cognitive effect needs runtime proof."],
+            },
+        })
+        self.assertEqual(manager.commit_from_response(response, max_chars=200), "updated")
+        output = manager.format_for_prompt()
+        self.assertIn("New scene with another Mita", output)
+        self.assertNotIn("Old activity", output)
+        self.assertLessEqual(len(output.split("[/WORKING STATE]")[0]), 400)
+
+    def test_empty_working_state_object_does_not_discard_scene(self):
+        manager = WorkingStateManager().bind("Cappie", "Cappie")
+        manager.update(WorkingState(focus="Stay with the scene"))
+        response = StructuredResponse.model_validate({
+            "segments": [{"text": "I'm here."}],
+            "working_state": {},
+        })
+        self.assertEqual(manager.commit_from_response(response), "empty")
+        self.assertIn("Stay with the scene", manager.format_for_prompt())
+
     def test_action_projection_uses_requested_structured_actions_only(self):
         records = requested_actions_from_structured({
             "segments": [{
