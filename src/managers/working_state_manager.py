@@ -76,6 +76,27 @@ class WorkingStateManager(CharacterScopedService):
                 self._states.pop(key, None)
         return bool(cleaned)
 
+    def commit_from_response(self, response: Any, *, max_chars: int = 2000) -> str:
+        """Commit an explicitly provided handoff; omission preserves the last scene.
+
+        Pydantic's model_fields_set distinguishes an omitted optional field from
+        an explicitly emitted null. Do not treat the default None as a clear:
+        dialogue models regularly omit the handoff on otherwise valid replies.
+        """
+        if "working_state" not in getattr(response, "model_fields_set", set()):
+            return "retained"
+
+        state = response.working_state
+        if state is None:
+            self.clear()
+            return "cleared"
+
+        if self.update(state, max_chars=max_chars):
+            return "updated"
+        # An empty object is not a meaningful scene update. Keep existing
+        # context unless the model explicitly requested a reset with null.
+        return "empty"
+
     def clear(self) -> None:
         with self._lock:
             self._states.pop(self.storage_key, None)
